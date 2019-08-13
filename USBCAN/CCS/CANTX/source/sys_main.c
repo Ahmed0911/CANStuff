@@ -137,9 +137,9 @@ int main(void)
             // Update ID
             uint32_t newID;
             memcpy(&newID, &packet[1], 4);
-            //newID = IDs[i%7];
             newID = __rev(newID); // invert ID
-            newID  = (uint32)0x80000000U | (uint32)0x40000000U | (uint32)0x20000000U | (uint32)((uint32)((uint32)newID & (uint32)0x1FFFFFFFU) << (uint32)0U);
+            //newID  = (uint32)0x80000000U | (uint32)0x40000000U | (uint32)0x20000000U | (uint32)((uint32)((uint32)newID & (uint32)0x1FFFFFFFU) << (uint32)0U); // 29bit ID
+            newID  = (uint32)0x80000000U | (uint32)0x00000000U | (uint32)0x20000000U | (uint32)((uint32)((uint32)newID & (uint32)0x000007FFU) << (uint32)18U); // 11-bit ID
             canUpdateID(canREG1, canMESSAGE_BOX1, newID);
 
             // send
@@ -150,12 +150,6 @@ int main(void)
             sciSendByte(sciREG1, 'A');
         }
 
-        /*uint32_t newData = __rev(543565);
-        memcpy(&packet[9], &newData, 4);
-        uint32_t newID = IDs[0];
-       //newID = __rev(newID); // invert ID
-       newID  = (uint32)0x80000000U | (uint32)0x40000000U | (uint32)0x20000000U | (uint32)((uint32)((uint32)newID & (uint32)0x1FFFFFFFU) << (uint32)0U);
-       canUpdateID(canREG1, canMESSAGE_BOX1, newID);*/
         if( packet[0] == 'B') // Burst Mode
         {
             int i;
@@ -163,24 +157,22 @@ int main(void)
             {
                 // wait for TX object to be free
                 while( canIsTxMessagePending(canREG1, canMESSAGE_BOX1));
-/*
-                // Update ID
-                uint32_t newID;
-                //memcpy(&newID, &packet[1], 4);
-                newID = IDs[i%7];
-                //newID = __rev(newID); // invert ID
-                newID  = (uint32)0x80000000U | (uint32)0x40000000U | (uint32)0x20000000U | (uint32)((uint32)((uint32)newID & (uint32)0x1FFFFFFFU) << (uint32)0U);
-                canUpdateID(canREG1, canMESSAGE_BOX1, newID);
 
+                // Update ID
+                /*uint32_t newID;
+                memcpy(&newID, &packet[1], 4);
+                newID = __rev(newID); // invert ID
+                //newID  = (uint32)0x80000000U | (uint32)0x40000000U | (uint32)0x20000000U | (uint32)((uint32)((uint32)newID & (uint32)0x1FFFFFFFU) << (uint32)0U); // 29bit ID
+                newID  = (uint32)0x80000000U | (uint32)0x00000000U | (uint32)0x20000000U | (uint32)((uint32)((uint32)newID & (uint32)0x000007FFU) << (uint32)18U); // 11-bit ID
+                canUpdateID(canREG1, canMESSAGE_BOX1, newID);
 
                 // increment ID/DATA
                 uint32_t newData = __rev(i);
-                memcpy(&packet[9], &newData, 4);
-*/
+                memcpy(&packet[9], &newData, 4);*/
+
                 // send new packet
                 canTransmit(canREG1, canMESSAGE_BOX1, &packet[5]);
                 TXCounter++;
-
             }
 
             // Send burst packet
