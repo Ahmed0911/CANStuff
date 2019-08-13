@@ -70,10 +70,17 @@
 //////////////////////////////
 // ETH Configuration
 //////////////////////////////
-uint8_t destMACAddress[6] =   {0x30U, 0x5AU, 0x3AU, 0x4AU, 0x6CU, 0x4DU}; // CHANGE
+uint8_t destMACAddress[6] =   {0x30U, 0x5AU, 0x3AU, 0x4AU, 0x6CU, 0x4DU}; // Local home
+//uint8_t destMACAddress[6] =   {0x92U, 0x6bU, 0xc7U, 0x41U, 0x4bU, 0xe8U}; // Office, Xavier-A, br0
+//uint8_t destMACAddress[6] =   {0x76U, 0xe7U, 0x01U, 0x0aU, 0xcfU, 0xf2U}; // Scenic-1, Xavier-A, br0
+//uint8_t destMACAddress[6] =   {0xeaU, 0x45U, 0xd7U, 0x8eU, 0x91U, 0x4bU}; // Scenic-1, Xavier-B, br0
+
 uint8_t destinationIPAddr[4] = { 192, 168, 0, 19 }; // CHANGE
+//uint8_t destinationIPAddr[4] = { 192, 168, 2, 100 }; // CHANGE
 
 uint8_t sourceIPAddr[4] = { 192, 168, 0, 123 }; // CHANGE
+//uint8_t sourceIPAddr[4] = { 192, 168, 2, 110 }; // CHANGE
+
 uint16_t destinationPort = 12345;
 //////////////////////////////
 
@@ -289,6 +296,7 @@ void GetCANAndFillBuffer(canBASE_t* canReg, uint32 canDev)
             {
                 // get id
                 uint32_t canID = canGetID(canReg, boxId);
+                canID = canID >> 18; // for 11-bit
                 g_Stats.CanRcvCounter[canDev]++;
                 g_canRcvCounters[canDev]++;
 
@@ -324,8 +332,8 @@ pbuf_t CreateUDPPacket(uint8_t* frame, uint8_t* dataToSend, uint32_t dataLength 
     int i;
     for(i=0; i < 6; i++)
     {
-        //frame[i] = 0xff; // broadcast
-        frame[i] = destMACAddress[i];
+        frame[i] = 0xff; // broadcast
+        //frame[i] = destMACAddress[i];
     }
 
     // Source MAC address
