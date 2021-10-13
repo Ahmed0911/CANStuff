@@ -1,15 +1,9 @@
-/** @file HL_reg_l2ramw.h
-*   @brief L2RAMW Register Layer Header File
+/** @file errata_SSWF021_45.c 
+*   @brief errata for PLLs 
 *   @date 11-Dec-2018
 *   @version 04.07.01
-*   
-*   This file contains:
-*   - Definitions
-*   - Types
-*   .
-*   which are relevant for the System driver.
+*
 */
-
 /* 
 * Copyright (C) 2009-2018 Texas Instruments Incorporated - www.ti.com  
 * 
@@ -44,51 +38,12 @@
 *
 */
 
+#ifndef INCLUDE_ERRATA_SSWF021_45_H_
+#define INCLUDE_ERRATA_SSWF021_45_H_
 
-#ifndef __REG_L2RAMW_H__
-#define __REG_L2RAMW_H__
+uint32 _errata_SSWF021_45_both_plls(uint32 count);
+uint32 _errata_SSWF021_45_pll1(uint32 count);
+uint32 _errata_SSWF021_45_pll2(uint32 count);
 
-/* USER CODE BEGIN (0) */
-/* USER CODE END */
 
-#include "HL_sys_common.h"
-
-/* USER CODE BEGIN (1) */
-/* USER CODE END */
-
-/* L2ram Register Frame Definition */
-/** @struct l2ramwBase
-*   @brief L2RAMW Wrapper Register Frame Definition
-*
-*   This type is used to access the L2RAMW Wrapper Registers.
-*/
-/** @typedef l2ramwBASE_t
-*   @brief L2RAMW Wrapper Register Frame Type Definition
-*
-*   This type is used to access the L2RAMW Wrapper Registers.
-*/
-
-typedef volatile struct l2ramwBase
-{
-    uint32 RAMCTRL;         /* 0x0000 */
-    uint32 rsvd1[3];        /* 0x0004 */
-    uint32 RAMERRSTATUS;    /* 0x0010 */
-    uint32 rsvd2[4];        /* 0x0014 */
-    uint32 DIAGDATAVECTOR_H;/* 0x0024 */
-    uint32 DIAGDATAVECTOR_L;/* 0x0028 */
-    uint32 DIAG_ECC;        /* 0x002C */
-    uint32 RAMTEST;         /* 0x0030 */
-    uint32 rsvd3;           /* 0x0034 */
-    uint32 RAMADDRDECVECT;  /* 0x0038 */
-    uint32 MEMINITDOMAIN;   /* 0x003C */
-    uint32 rsvd4;           /* 0x0040 */
-    uint32 BANKDOMAINMAP0;  /* 0x0044 */
-    uint32 BANKDOMAINMAP1;  /* 0x0048 */
-} l2ramwBASE_t;
-
-#define l2ramwREG ((l2ramwBASE_t *)(0xFFFFF900U))
-
-/* USER CODE BEGIN (2) */
-/* USER CODE END */
-
-#endif
+#endif /* INCLUDE_HL_ERRATA_SSWF021_45_H_ */

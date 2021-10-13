@@ -1,14 +1,14 @@
 /** @file HL_sys_main.c 
 *   @brief Application main file
-*   @date 07-July-2017
-*   @version 04.07.00
+*   @date 11-Dec-2018
+*   @version 04.07.01
 *
 *   This file contains an empty main function,
 *   which can be used for the application.
 */
 
 /* 
-* Copyright (C) 2009-2016 Texas Instruments Incorporated - www.ti.com  
+* Copyright (C) 2009-2018 Texas Instruments Incorporated - www.ti.com  
 * 
 * 
 *  Redistribution and use in source and binary forms, with or without 
@@ -75,11 +75,11 @@ uint8_t destMACAddress[6] =   {0x30U, 0x5AU, 0x3AU, 0x4AU, 0x6CU, 0x4DU}; // Loc
 //uint8_t destMACAddress[6] =   {0x76U, 0xe7U, 0x01U, 0x0aU, 0xcfU, 0xf2U}; // Scenic-1, Xavier-A, br0
 //uint8_t destMACAddress[6] =   {0xeaU, 0x45U, 0xd7U, 0x8eU, 0x91U, 0x4bU}; // Scenic-1, Xavier-B, br0
 
-uint8_t destinationIPAddr[4] = { 192, 168, 0, 19 }; // CHANGE
-//uint8_t destinationIPAddr[4] = { 192, 168, 2, 100 }; // CHANGE
+//uint8_t destinationIPAddr[4] = { 192, 168, 0, 19 }; // CHANGE
+uint8_t destinationIPAddr[4] = { 192, 168, 2, 100 }; // CHANGE
 
-uint8_t sourceIPAddr[4] = { 192, 168, 0, 123 }; // CHANGE
-//uint8_t sourceIPAddr[4] = { 192, 168, 2, 110 }; // CHANGE
+//uint8_t sourceIPAddr[4] = { 192, 168, 0, 123 }; // CHANGE
+uint8_t sourceIPAddr[4] = { 192, 168, 2, 110 }; // CHANGE
 
 uint16_t destinationPort = 12345;
 //////////////////////////////
