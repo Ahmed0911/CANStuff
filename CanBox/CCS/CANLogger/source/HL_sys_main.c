@@ -70,16 +70,16 @@
 //////////////////////////////
 // ETH Configuration
 //////////////////////////////
-uint8_t destMACAddress[6] =   {0x30U, 0x5AU, 0x3AU, 0x4AU, 0x6CU, 0x4DU}; // Local home
+uint8_t destMACAddress[6] =   {0x00U, 0x04U, 0x4BU, 0xAFU, 0x76U, 0x25U}; // Local home
 //uint8_t destMACAddress[6] =   {0x92U, 0x6bU, 0xc7U, 0x41U, 0x4bU, 0xe8U}; // Office, Xavier-A, br0
 //uint8_t destMACAddress[6] =   {0x76U, 0xe7U, 0x01U, 0x0aU, 0xcfU, 0xf2U}; // Scenic-1, Xavier-A, br0
 //uint8_t destMACAddress[6] =   {0xeaU, 0x45U, 0xd7U, 0x8eU, 0x91U, 0x4bU}; // Scenic-1, Xavier-B, br0
 
 //uint8_t destinationIPAddr[4] = { 192, 168, 0, 19 }; // CHANGE
-uint8_t destinationIPAddr[4] = { 192, 168, 2, 100 }; // CHANGE
+uint8_t destinationIPAddr[4] = { 192, 168, 1, 11 }; // CHANGE
 
 //uint8_t sourceIPAddr[4] = { 192, 168, 0, 123 }; // CHANGE
-uint8_t sourceIPAddr[4] = { 192, 168, 2, 110 }; // CHANGE
+uint8_t sourceIPAddr[4] = { 192, 168, 1, 110 }; // CHANGE
 
 uint16_t destinationPort = 12345;
 //////////////////////////////
@@ -120,9 +120,10 @@ struct SStats
 // CAN Msg Struct - 16 bytes/message
 struct SCANMsg
 {
-    uint32_t CANnr;
-    uint32_t ID;
-    uint8_t Data[8];
+    uint32_t    CANnr;  // LE32
+    uint32_t    ID;     // LE32
+    uint32_t    Length; // LE32
+    uint8_t     Data[8];
 };
 
 volatile struct SStats g_Stats; // Header
@@ -166,6 +167,7 @@ int main(void)
         // 1. Get CAN DATA
         g_Stats.NumberOfCANMsgsInPacket = 0; // reset counter and pointer
         g_MsgPtr = (struct SCANMsg*)(g_DataToSend+sizeof(g_Stats));
+        //g_MsgPtr = (struct SCANMsg*)(g_DataToSend); // USE THIS
 
         GetCANAndFillBuffer(canREG1, 0);
         GetCANAndFillBuffer(canREG2, 1);
@@ -175,7 +177,7 @@ int main(void)
         // 2. Calculate Data Rate
         if( ++g_canCalcCounter >= 1000 )
         {
-            int i;
+            int i = 0;
             for(i=0; i!=4; i++)
             {
                 //g_Stats.CanDataRate[i] = (float)g_canRcvCounters[i] / g_canCalcCounter; // packets/sec
@@ -191,7 +193,7 @@ int main(void)
         }
 
         // 3. Send Ethernet Packet
-        memcpy( g_DataToSend, (const void*)&g_Stats, sizeof(g_Stats));
+        memcpy( g_DataToSend, (const void*)&g_Stats, sizeof(g_Stats)); // COMMENT THIS
         uint32_t len = sizeof(g_Stats) + g_Stats.NumberOfCANMsgsInPacket*sizeof(struct SCANMsg);
 
 
@@ -285,25 +287,25 @@ float GetAndRestartTimer_us()
 void GetCANAndFillBuffer(canBASE_t* canReg, uint32 canDev)
 {
     uint32_t i;
-    uint8  rx_data[8];
+    uint8  rx_data[9]; // 9. byte in CAN size (HL_can.c modifed!)
     for(i=0; i!=15; i++)
     {
         uint32_t boxId = canMESSAGE_BOX1 + i;
         if( canIsRxMessageArrived(canReg, boxId))
         {
             // get data
+            uint32_t canID = canGetID(canReg, boxId); // get CAN ID (canGetData() clears NewDat flag)
             if( canGetData(canReg, boxId, rx_data) == 1 ) // data ok?
             {
-                // get id
-                uint32_t canID = canGetID(canReg, boxId);
                 canID = canID >> 18; // for 11-bit
                 g_Stats.CanRcvCounter[canDev]++;
                 g_canRcvCounters[canDev]++;
 
                 // fill packet
                 memcpy(g_MsgPtr->Data, rx_data, 8); // Data
-                g_MsgPtr->CANnr = canDev+1; // CAN Nr [1...4]
-                g_MsgPtr->ID = canID; // ID
+                g_MsgPtr->CANnr = __rev(canDev+1); // CAN Nr [1...4]
+                g_MsgPtr->ID = __rev(canID); // ID
+                g_MsgPtr->Length = __rev(rx_data[8]); // length
                 g_MsgPtr++; // Next Msg
                 g_Stats.NumberOfCANMsgsInPacket++;
             }
@@ -332,8 +334,8 @@ pbuf_t CreateUDPPacket(uint8_t* frame, uint8_t* dataToSend, uint32_t dataLength 
     int i;
     for(i=0; i < 6; i++)
     {
-        frame[i] = 0xff; // broadcast
-        //frame[i] = destMACAddress[i];
+        //frame[i] = 0xff; // broadcast
+        frame[i] = destMACAddress[i];
     }
 
     // Source MAC address

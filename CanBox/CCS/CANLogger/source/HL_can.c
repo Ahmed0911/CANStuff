@@ -2121,6 +2121,8 @@ uint32 canGetData(canBASE_t *node, uint32 messageBox, uint8 * const data)
     */
 
 /* USER CODE BEGIN (11) */
+    // put data size in 9. byte data[8]
+    data[8] = size;
 /* USER CODE END */
 
     return success;
