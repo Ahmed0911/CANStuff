@@ -81,7 +81,7 @@ uint8_t destinationIPAddr[4] = { 192, 168, 1, 11 }; // CHANGE
 //uint8_t sourceIPAddr[4] = { 192, 168, 0, 123 }; // CHANGE
 uint8_t sourceIPAddr[4] = { 192, 168, 1, 110 }; // CHANGE
 
-uint16_t destinationPort = 12345;
+uint16_t destinationPort = 59478;
 //////////////////////////////
 
 
@@ -117,19 +117,27 @@ struct SStats
     uint32_t EthFramesSent;
 };
 
-// CAN Msg Struct - 16 bytes/message
-struct SCANMsg
+#pragma pack(push, 1)
+struct AurixCanHeader
 {
-    uint32_t    CANnr;  // LE32
-    uint32_t    ID;     // LE32
-    uint32_t    Length; // LE32
-    uint8_t     Data[8];
+    uint8_t direction;// 0x14: Xavier to Aurix, 0x28: Aurix to Xavier
+    uint8_t source; // 0x01 - Main Aurix
+    uint8_t destination; // 0x03 - Xavier-A
+    uint8_t busType; // CAN
+    uint16_t infoLength; // info size (without 4Byte header): messageLength+12
+    uint16_t infoCode;
+    uint8_t busID; // CAN1...CAN6
+    uint8_t reserved;
+    uint16_t sequenceNumber;
+    uint32_t messageID; // CAN-ID
+    uint16_t messageLength; // 0..8 bytes
+    uint8_t data[8]; // 8 data bytes
 };
+#pragma pack(pop)
 
 volatile struct SStats g_Stats; // Header
 uint8_t g_DataToSend[2000]; // Actual data to send (header + messages)
-
-struct SCANMsg* g_MsgPtr;
+uint32_t g_SizeToSend = 0; // size t send (also use for filling buffer)
 
 void GetCANAndFillBuffer(canBASE_t* canReg, uint32 canDev);
 
@@ -166,8 +174,7 @@ int main(void)
 
         // 1. Get CAN DATA
         g_Stats.NumberOfCANMsgsInPacket = 0; // reset counter and pointer
-        g_MsgPtr = (struct SCANMsg*)(g_DataToSend+sizeof(g_Stats));
-        //g_MsgPtr = (struct SCANMsg*)(g_DataToSend); // USE THIS
+        g_SizeToSend = 0; // reset pointer, do not include header in aurix compatibility mode
 
         GetCANAndFillBuffer(canREG1, 0);
         GetCANAndFillBuffer(canREG2, 1);
@@ -193,15 +200,14 @@ int main(void)
         }
 
         // 3. Send Ethernet Packet
-        memcpy( g_DataToSend, (const void*)&g_Stats, sizeof(g_Stats)); // COMMENT THIS
-        uint32_t len = sizeof(g_Stats) + g_Stats.NumberOfCANMsgsInPacket*sizeof(struct SCANMsg);
+        uint32_t len = g_SizeToSend; // total size to send
 
-
-        pbuf_t pbuf = CreateUDPPacket(g_Frame, g_DataToSend, len);
-
-        EMACTransmit(&hdkif_data[0], &pbuf);
-
-        g_Stats.EthFramesSent++;
+        if( len > 0 ) // do not send empty UDP packets (no messages)
+        {
+            pbuf_t pbuf = CreateUDPPacket(g_Frame, g_DataToSend, len);
+            EMACTransmit(&hdkif_data[0], &pbuf);
+            g_Stats.EthFramesSent++;
+        }
 
         // 4. Calc PCU Usage
         uint32_t cpuTime_us = GetAndRestartTimer_us();
@@ -297,16 +303,29 @@ void GetCANAndFillBuffer(canBASE_t* canReg, uint32 canDev)
             uint32_t canID = canGetID(canReg, boxId); // get CAN ID (canGetData() clears NewDat flag)
             if( canGetData(canReg, boxId, rx_data) == 1 ) // data ok?
             {
+                uint16 dataLength = rx_data[8];
+
                 canID = canID >> 18; // for 11-bit
                 g_Stats.CanRcvCounter[canDev]++;
                 g_canRcvCounters[canDev]++;
 
                 // fill packet
-                memcpy(g_MsgPtr->Data, rx_data, 8); // Data
-                g_MsgPtr->CANnr = __rev(canDev+1); // CAN Nr [1...4]
-                g_MsgPtr->ID = __rev(canID); // ID
-                g_MsgPtr->Length = __rev(rx_data[8]); // length
-                g_MsgPtr++; // Next Msg
+                struct AurixCanHeader header;
+                header.direction = 0x28; // 0x14: Xavier to Aurix, 0x28: Aurix to Xavier
+                header.source = 0x01; // 0x01 - main Aurix
+                header.destination = 0x03; // 0x03 - Xavier-A
+                header.busType = 0x00; // CAN
+                header.infoLength = __rev16(12+dataLength);
+                header.infoCode = 0;
+                header.busID = canDev;
+                header.sequenceNumber = 0;
+                header.messageID = __rev(canID);
+                header.messageLength = __rev16(dataLength);
+                memcpy(header.data, rx_data, 8);
+
+                // copy to buffer and advance
+                memcpy(&g_DataToSend[g_SizeToSend], &header, 18+dataLength );
+                g_SizeToSend+=18+dataLength;
                 g_Stats.NumberOfCANMsgsInPacket++;
             }
             else g_Stats.LostPackets++;
