@@ -70,17 +70,11 @@
 //////////////////////////////
 // ETH Configuration
 //////////////////////////////
-uint8_t destMACAddress[6] =   {0x00U, 0x04U, 0x4BU, 0xAFU, 0x76U, 0x25U}; // Local home
-//uint8_t destMACAddress[6] =   {0x92U, 0x6bU, 0xc7U, 0x41U, 0x4bU, 0xe8U}; // Office, Xavier-A, br0
-//uint8_t destMACAddress[6] =   {0x76U, 0xe7U, 0x01U, 0x0aU, 0xcfU, 0xf2U}; // Scenic-1, Xavier-A, br0
-//uint8_t destMACAddress[6] =   {0xeaU, 0x45U, 0xd7U, 0x8eU, 0x91U, 0x4bU}; // Scenic-1, Xavier-B, br0
+uint8_t destMACAddress[6] =   {0x00U, 0x04U, 0x4BU, 0xAFU, 0x76U, 0x26U}; // Office, Nvidia-B
+uint8_t destinationIPAddr[4] = { 192, 168, 5, 62 }; // Stinger2-B
 
-//uint8_t destinationIPAddr[4] = { 192, 168, 0, 19 }; // CHANGE
-uint8_t destinationIPAddr[4] = { 192, 168, 1, 11 }; // CHANGE
 
-//uint8_t sourceIPAddr[4] = { 192, 168, 0, 123 }; // CHANGE
-uint8_t sourceIPAddr[4] = { 192, 168, 1, 110 }; // CHANGE
-
+uint8_t sourceIPAddr[4] = { 192, 168, 5, 146 };
 uint16_t destinationPort = 59478;
 //////////////////////////////
 
