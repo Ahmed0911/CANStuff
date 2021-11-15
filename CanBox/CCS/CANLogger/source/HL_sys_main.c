@@ -55,6 +55,7 @@
 #include "HL_hw_reg_access.h"
 #include "HL_can.h"
 #include "HL_rti.h"
+#include <string.h>
 /* USER CODE END */
 
 /** @fn void main(void)
@@ -70,7 +71,10 @@
 //////////////////////////////
 // ETH Configuration
 //////////////////////////////
-uint8_t destMACAddress[6] =   {0x00U, 0x04U, 0x4BU, 0xAFU, 0x76U, 0x26U}; // Office, Nvidia-B
+//uint8_t destMACAddress[6] =   {0x00U, 0x04U, 0x4BU, 0xAFU, 0x76U, 0x26U}; // Office, Nvidia-B
+uint8_t destMACAddress[6] =   {0x00U, 0x04U, 0x4BU, 0xF6U, 0x5EU, 0x44U}; // Stinger#2-B
+//uint8_t destMACAddress[6] =   {0xA0U, 0x36U, 0x9FU, 0xF8U, 0x9EU, 0x08U}; // Storky
+//uint8_t destMACAddress[6] =   {0x8CU, 0x16U, 0x45U, 0x38U, 0xB6U, 0x3EU}; // Laptop
 uint8_t destinationIPAddr[4] = { 192, 168, 5, 62 }; // Stinger2-B
 
 
@@ -82,8 +86,11 @@ uint16_t destinationPort = 59478;
 
 extern hdkif_t hdkif_data[1];
 
-pbuf_t CreateUDPPacket(uint8_t* frame, uint8_t* dataToSend, uint32_t dataLength );
+// Data Transfer Functions
 uint8_t g_Frame[2000]; // global buffer for UDP Packet Transmit (Should be in un-cached memory!!! It is accessed by EMAC DMA)
+pbuf_t CreateUDPPacket(uint8_t* frame, uint8_t* dataToSend, uint32_t dataLength );
+pbuf_t CreateARPPacket(uint8_t* frame, uint8_t* dataToSend );
+bool ArpRequestPending = false;
 
 // counters for bitrateCalc
 uint32_t g_canCalcCounter = 0;
@@ -140,7 +147,7 @@ float GetAndRestartTimer_us();
 
 /* USER CODE END */
 
-uint8	emacAddress[6U] = 	{0x00U, 0x00U, 0xAAU, 0xBBU, 0xCCU, 0xDDU};
+uint8	emacAddress[6U] = 	{0x18U, 0xD7U, 0x93U, 0xD0U, 0x00U, 0x10U};
 uint32 	emacPhyAddress	=	1U;
 
 int main(void)
@@ -196,6 +203,8 @@ int main(void)
         // 3. Send Ethernet Packet
         uint32_t len = g_SizeToSend; // total size to send
 
+        len = 50; // DUMMY SEND - REMOVE ME!!!
+
         if( len > 0 ) // do not send empty UDP packets (no messages)
         {
             pbuf_t pbuf = CreateUDPPacket(g_Frame, g_DataToSend, len);
@@ -203,7 +212,15 @@ int main(void)
             g_Stats.EthFramesSent++;
         }
 
-        // 4. Calc PCU Usage
+        // 4. Send ARP responses
+        if( ArpRequestPending )
+        {
+            pbuf_t pbuf = CreateARPPacket(g_Frame, g_DataToSend);
+            EMACTransmit(&hdkif_data[0], &pbuf);
+            ArpRequestPending = false;
+        }
+
+        // 5. Calc PCU Usage
         uint32_t cpuTime_us = GetAndRestartTimer_us();
         g_Stats.CPUUsage = 100 * (cpuTime_us / 1000.0f); // 1000 - cycle time in [us]
 
@@ -225,10 +242,25 @@ void rtiNotification(rtiBASE_t *rtiREG, uint32 notification)
     g_Stats.Timestamp++;
 }
 
+
 int EthRXINTCounter;
 int EthOWNERLocked;
 int EthNoEOP;
 int TotalSize;
+int ARPCounterRequest;
+int ARPCounterResponse;
+uint8_t ArpSenderMACAddr[6];
+uint8_t ArpSenderIPAddr[4];
+
+// ARP Offsets
+#define ARPOFF_Request      21
+#define ARPOFF_MACSender    22
+#define ARPOFF_IPSender     28
+#define ARPOFF_MACTarget    32
+#define ARPOFF_IPTarget     38
+
+uint8_t Data[64];
+
 void emacRxNotification(hdkif_t *hdkif)
 {
     EthRXINTCounter++;
@@ -256,7 +288,41 @@ void emacRxNotification(hdkif_t *hdkif)
         uint16_t tot_len = EMACSwizzleData(curr_bd->flags_pktlen) & 0xFFFF;
         TotalSize += tot_len;
         //////////////////////
-        // TODO: Parse packet
+        // Parse packet
+        uint8_t* packet = (uint8_t*)EMACSwizzleData(curr_bd->bufptr);
+        //memcpy(Data, packet, 64); // debug
+
+        // Check if ARP
+        if( packet[12] == 0x08 && packet[13] == 0x06 )
+        {
+            // check if Ethernet + IPv4
+            if( packet[14] == 0x00 && packet[15] == 0x01 && packet[16] == 0x08 && packet[17] == 0x00)
+            {
+                if( packet[ARPOFF_Request] == 0x01) // ARP Request
+                {
+                    ARPCounterRequest++;
+
+                    // Check Target IP (US)
+                    if( packet[ARPOFF_IPTarget] == sourceIPAddr[0] &&
+                        packet[ARPOFF_IPTarget+1] == sourceIPAddr[1] &&
+                        packet[ARPOFF_IPTarget+2] == sourceIPAddr[2] &&
+                        packet[ARPOFF_IPTarget+3] == sourceIPAddr[3]
+                        )
+                    {
+                        // store Sender MAC + Sender IP
+                        memcpy(ArpSenderMACAddr, &packet[ARPOFF_MACSender], 6);
+                        memcpy(ArpSenderIPAddr, &packet[ARPOFF_IPSender], 4);
+
+                        ArpRequestPending = true;
+                    }
+                }
+                else if( packet[21] == 0x02) // ARP Response
+                {
+                    ARPCounterResponse++;
+                }
+            }
+        }
+
 
         //////////////////////
 
@@ -354,10 +420,9 @@ pbuf_t CreateUDPPacket(uint8_t* frame, uint8_t* dataToSend, uint32_t dataLength 
     // Source MAC address
     for(i=0; i < 6; i++) frame[6+i] = emacAddress[i];
 
-    // Ethernet Type II
+    // Ethernet Type - IPv4 (0x0800)
     frame[12] = 0x08;
     frame[13] = 0x00;
-
 
 
     //////////////////////////////////////
@@ -403,7 +468,7 @@ pbuf_t CreateUDPPacket(uint8_t* frame, uint8_t* dataToSend, uint32_t dataLength 
         frame[30+i] =  destinationIPAddr[i];
     }
 
-    // Calculate IP Header checksum and add to pacet
+    // Calculate IP Header checksum and add to packet
     uint32_t sum = 0;
     for (i=0; i < 20; i=i+2)
     {
@@ -423,8 +488,8 @@ pbuf_t CreateUDPPacket(uint8_t* frame, uint8_t* dataToSend, uint32_t dataLength 
     // UDP HEADER (8 bytes)
     //////////////////////////////////////
     // Source port (not used, set to zero)
-    frame[34] = 0;
-    frame[35] = 0;
+    frame[34] = destinationPort / 256 - 100;
+    frame[35] = destinationPort % 256;
 
     // Destination port
     frame[36] = destinationPort / 256;
@@ -448,4 +513,70 @@ pbuf_t CreateUDPPacket(uint8_t* frame, uint8_t* dataToSend, uint32_t dataLength 
 
     return pbuf;
 }
+
+////////////////////////////
+// Minimum dataLength/padding = 18 bytes (64 bytes is minimum ethernet frame size: EthernetHeader(14) + ARP(8+20) + FCS(4) + PADDING = 46(data+FCS) + 18(padding) = 64 bytes)
+////////////////////////////
+pbuf_t CreateARPPacket(uint8_t* frame, uint8_t* dataToSend )
+{
+    pbuf_t pbuf;
+    pbuf.next = NULL;
+    pbuf.payload = frame;
+    pbuf.len = 18 + 28 + 14; // 42 bytes data + 18 bytes padding = 60 bytes (+4 FSC)
+    pbuf.tot_len = 18 + 28 + 14;
+
+    //////////////////////////////////////
+    // ETHERNET/MAC HEADER (14 bytes)
+    //////////////////////////////////////
+    // Destination MAC address
+    memcpy(&frame[0], ArpSenderMACAddr, 6 );
+
+    // Source MAC address
+    memcpy(&frame[6], emacAddress, 6 );
+
+    // Ethernet Type - ARP (0x0806)
+    frame[12] = 0x08;
+    frame[13] = 0x06;
+
+
+
+    //////////////////////////////////////
+    // ARP HEADER (20 bytes)
+    //////////////////////////////////////
+
+    // HW Type Ethernet (0x0001)
+    frame[14] = 0x00;
+    frame[15] = 0x01;
+
+    // Protocol: IPv4 (0x0800)
+    frame[16] = 0x08;
+    frame[17] = 0x00;
+
+    // HW Size - MAC
+    frame[18] = 0x06;
+
+    // Protocol Size - IP
+    frame[19] = 0x04;
+
+    // Opcode: Response - 0x0002
+    frame[20] = 0x00;
+    frame[ARPOFF_Request] = 0x02;
+
+    // Sender MAC + IP
+    memcpy(&frame[ARPOFF_MACSender], emacAddress, 6 );
+    memcpy(&frame[ARPOFF_IPSender], sourceIPAddr, 4 );
+
+    // Sender MAC + IP
+    memcpy(&frame[ARPOFF_MACTarget], ArpSenderMACAddr, 6 );
+    memcpy(&frame[ARPOFF_IPTarget], ArpSenderIPAddr, 4 );
+
+
+    //////////////////////////////////////
+    // PADDING
+    //////////////////////////////////////
+    memset(&frame[42], 0, 18);
+
+    return pbuf;
+}
+
 /* USER CODE END */
