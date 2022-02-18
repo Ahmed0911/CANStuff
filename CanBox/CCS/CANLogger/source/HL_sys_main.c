@@ -72,10 +72,13 @@
 // ETH Configuration
 //////////////////////////////
 //uint8_t destMACAddress[6] =   {0x00U, 0x04U, 0x4BU, 0xAFU, 0x76U, 0x26U}; // Office, Nvidia-B
-uint8_t destMACAddress[6] =   {0x00U, 0x04U, 0x4BU, 0xF6U, 0x5EU, 0x44U}; // Stinger#2-B
 //uint8_t destMACAddress[6] =   {0xA0U, 0x36U, 0x9FU, 0xF8U, 0x9EU, 0x08U}; // Storky
 //uint8_t destMACAddress[6] =   {0x8CU, 0x16U, 0x45U, 0x38U, 0xB6U, 0x3EU}; // Laptop
+uint8_t destMACAddress[6] =   {0x00U, 0x04U, 0x4BU, 0xF6U, 0x5EU, 0x44U}; // Stinger#2-B
+//uint8_t destMACAddress[6] =   {0x00U, 0x04U, 0x4BU, 0xCBU, 0xCFU, 0x85U}; // Stinger#3-B
+
 uint8_t destinationIPAddr[4] = { 192, 168, 5, 62 }; // Stinger2-B
+//uint8_t destinationIPAddr[4] = { 192, 168, 5, 72 }; // Stinger3-B
 
 
 uint8_t sourceIPAddr[4] = { 192, 168, 5, 146 };
@@ -203,7 +206,7 @@ int main(void)
         // 3. Send Ethernet Packet
         uint32_t len = g_SizeToSend; // total size to send
 
-        len = 50; // DUMMY SEND - REMOVE ME!!!
+        //len = 50; // DUMMY SEND - REMOVE ME!!!
 
         if( len > 0 ) // do not send empty UDP packets (no messages)
         {
