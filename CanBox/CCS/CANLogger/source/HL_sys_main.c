@@ -208,7 +208,7 @@ int main(void)
 
         //len = 50; // DUMMY SEND - REMOVE ME!!!
 
-        if( len > 0 ) // do not send empty UDP packets (no messages)
+        if( len > 0 && !ArpRequestPending) // do not send empty UDP packets (no messages)
         {
             pbuf_t pbuf = CreateUDPPacket(g_Frame, g_DataToSend, len);
             EMACTransmit(&hdkif_data[0], &pbuf);
