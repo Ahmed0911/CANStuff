@@ -153,7 +153,19 @@ void GetCANAndFillBuffer(canBASE_t* canReg, uint32 canDev);
 uint32_t g_TimeCounterStartTicks;
 float GetAndRestartTimer_us();
 
+// TX Radar Stuff
 void setUpCANs();
+void sendRadarDataToCAN();
+
+#pragma pack(push, 1)
+struct RadarData
+{
+    float Speed[6]; // m/s
+    float YawRate[6]; // deg/s
+};
+#pragma pack(pop)
+
+struct RadarData g_radarData;
 
 /* USER CODE END */
 
@@ -233,15 +245,10 @@ int main(void)
             ArpRequestPending = false;
         }
 
-        // 5. Send CAN Data
-        if( !canIsTxMessagePending(canREG1, canMESSAGE_BOX17) )
+        // 5. Send Radar CAN Data
+        if( (g_Stats.CycleCounter % 20) == 0 ) // 20 ms period
         {
-            uint8_t dataToSend[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
-            uint32_t CanID = 0x300;
-            uint32_t packedID  = (uint32)0x80000000U | (uint32)0x00000000U | (uint32)0x20000000U | (uint32)((uint32)((uint32)CanID & (uint32)0x000007FFU) << (uint32)18U); // 11-bit ID
-            canUpdateID(canREG1, canMESSAGE_BOX17, packedID);
-            canTransmit(canREG1, canMESSAGE_BOX17, dataToSend);
-
+            sendRadarDataToCAN();
         }
 
         // 6. Calc PCU Usage
@@ -606,6 +613,8 @@ pbuf_t CreateARPPacket(uint8_t* frame, uint8_t* dataToSend )
 
 void setUpCANs()
 {
+    memset(&g_radarData, 0, sizeof(g_radarData)); // clear data
+
     uint32_t packedID = 0;
     uint32_t CanID = 0;
 
@@ -664,6 +673,64 @@ void setUpCANs()
 
 
     // CH4 (CAN5) - PCAN - N/A
+}
+
+void packSpeedAndYaw(float speed, float yaw, uint8_t* canSpeed, uint8_t* canYaw )
+{
+    // SPEED
+    uint8_t mode = 0; // standstill
+    uint16_t devSpeed = 0;
+    if( speed > 0.01 )
+    {
+        mode = 1;
+        devSpeed = (uint16_t)(speed/0.02f);
+    }
+    else if( speed < -0.01 )
+    {
+        mode = 2;
+        devSpeed = (uint16_t)(-speed/0.02f);
+    }
+    canSpeed[1] = devSpeed & 0x0FF;
+    canSpeed[0] = ((devSpeed>>8) & 0x01F) + (mode<<6);
+
+    // YAW
+    uint16_t yawRate = 0;
+    yawRate = (uint16_t)(yaw/0.01f) + 32768;
+    canYaw[0] = (yawRate>>8) & 0x0FF;
+    canYaw[1] = yawRate & 0x0FF;
+}
+
+void sendRadarDataToCAN()
+{
+    uint8_t dataToSendSpeed[8];
+    uint8_t dataToSendYaw[8];
+
+    // CH1 (CAN1) - Radars #1, #4
+    packSpeedAndYaw(g_radarData.Speed[1], g_radarData.YawRate[1], dataToSendSpeed, dataToSendYaw );
+    canTransmit(canREG1, canMESSAGE_BOX17, dataToSendSpeed);
+    canTransmit(canREG1, canMESSAGE_BOX18, dataToSendYaw);
+
+    packSpeedAndYaw(g_radarData.Speed[4], g_radarData.YawRate[4], dataToSendSpeed, dataToSendYaw );
+    canTransmit(canREG1, canMESSAGE_BOX19, dataToSendSpeed);
+    canTransmit(canREG1, canMESSAGE_BOX20, dataToSendYaw);
+
+    // CH2 (CAN3) - Radars #0, #2
+    packSpeedAndYaw(g_radarData.Speed[0], g_radarData.YawRate[0], dataToSendSpeed, dataToSendYaw );
+    canTransmit(canREG2, canMESSAGE_BOX17, dataToSendSpeed);
+    canTransmit(canREG2, canMESSAGE_BOX18, dataToSendYaw);
+
+    packSpeedAndYaw(g_radarData.Speed[2], g_radarData.YawRate[2], dataToSendSpeed, dataToSendYaw );
+    canTransmit(canREG2, canMESSAGE_BOX19, dataToSendSpeed);
+    canTransmit(canREG2, canMESSAGE_BOX20, dataToSendYaw);
+
+    // CH3 (CAN4) - Radars #3, #5
+    packSpeedAndYaw(g_radarData.Speed[3], g_radarData.YawRate[3], dataToSendSpeed, dataToSendYaw );
+    canTransmit(canREG3, canMESSAGE_BOX17, dataToSendSpeed);
+    canTransmit(canREG3, canMESSAGE_BOX18, dataToSendYaw);
+
+    packSpeedAndYaw(g_radarData.Speed[5], g_radarData.YawRate[5], dataToSendSpeed, dataToSendYaw );
+    canTransmit(canREG3, canMESSAGE_BOX19, dataToSendSpeed);
+    canTransmit(canREG3, canMESSAGE_BOX20, dataToSendYaw);
 }
 
 /* USER CODE END */
