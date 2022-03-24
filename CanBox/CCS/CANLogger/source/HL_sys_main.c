@@ -88,6 +88,7 @@ uint8_t destinationIPAddr[4] = { 192, 168, 5, 62 };
 
 uint8_t sourceIPAddr[4] = { 192, 168, 5, 146 };
 uint16_t destinationPort = 59478;
+uint16_t radarRXPort = 17185; // 0x4321
 //////////////////////////////
 
 
@@ -280,6 +281,7 @@ int EthNoEOP;
 int TotalSize;
 int ARPCounterRequest;
 int ARPCounterResponse;
+int UDPRadarRXCounter;
 uint8_t ArpSenderMACAddr[6];
 uint8_t ArpSenderIPAddr[4];
 
@@ -354,7 +356,25 @@ void emacRxNotification(hdkif_t *hdkif)
             }
         }
 
+        // Check if UDP Radar Stuff
+        if( packet[12] == 0x08 && packet[13] == 0x00 ) // IP
+        {
+            // check if Ethernet + IPv4
+            if( packet[14] == 0x45 )
+            {
+                if( packet[23] == 17) // UDP protocol
+                {
+                    // PORT = 17185 (0x4321) )
+                    if( packet[36] == (radarRXPort>>8) && packet[37] == (radarRXPort&0x0FF) )
+                    {
+                        // copy data to structure
+                        memcpy(&g_radarData, &packet[42], sizeof(g_radarData));
 
+                        UDPRadarRXCounter++;
+                    }
+                }
+            }
+        }
         //////////////////////
 
         // go to next
