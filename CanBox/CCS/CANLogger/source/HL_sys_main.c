@@ -71,14 +71,19 @@
 //////////////////////////////
 // ETH Configuration
 //////////////////////////////
-//uint8_t destMACAddress[6] =   {0x00U, 0x04U, 0x4BU, 0xAFU, 0x76U, 0x26U}; // Office, Nvidia-B
-//uint8_t destMACAddress[6] =   {0xA0U, 0x36U, 0x9FU, 0xF8U, 0x9EU, 0x08U}; // Storky
-//uint8_t destMACAddress[6] =   {0x8CU, 0x16U, 0x45U, 0x38U, 0xB6U, 0x3EU}; // Laptop
-uint8_t destMACAddress[6] =   {0x00U, 0x04U, 0x4BU, 0xF6U, 0x5EU, 0x44U}; // Stinger#2-B
-//uint8_t destMACAddress[6] =   {0x00U, 0x04U, 0x4BU, 0xCBU, 0xCFU, 0x85U}; // Stinger#3-B
 
-uint8_t destinationIPAddr[4] = { 192, 168, 5, 62 }; // Stinger2-B
-//uint8_t destinationIPAddr[4] = { 192, 168, 5, 72 }; // Stinger3-B
+// Stinger#1-B
+//uint8_t destMACAddress[6] =   {0x00U, 0x04U, 0x4BU, 0xF6U, 0x5DU, 0xA3U};
+//uint8_t destinationIPAddr[4] = { 192, 168, 5, 52 };
+
+// Stinger#2-B
+uint8_t destMACAddress[6] =   {0x00U, 0x04U, 0x4BU, 0xF6U, 0x5EU, 0x44U};
+uint8_t destinationIPAddr[4] = { 192, 168, 5, 62 };
+
+// Stinger#3-B
+//uint8_t destMACAddress[6] =   {0x00U, 0x04U, 0x4BU, 0xCBU, 0xCFU, 0x85U};
+//uint8_t destinationIPAddr[4] = { 192, 168, 5, 72 };
+
 
 
 uint8_t sourceIPAddr[4] = { 192, 168, 5, 146 };
@@ -148,6 +153,8 @@ void GetCANAndFillBuffer(canBASE_t* canReg, uint32 canDev);
 uint32_t g_TimeCounterStartTicks;
 float GetAndRestartTimer_us();
 
+void setUpCANs();
+
 /* USER CODE END */
 
 uint8	emacAddress[6U] = 	{0x18U, 0xD7U, 0x93U, 0xD0U, 0x00U, 0x10U};
@@ -161,6 +168,9 @@ int main(void)
     gioToggleBit(gioPORTB, 7);
     rtiInit(); /* RTI/Timer driver */
     EMACHWInit(emacAddress); /* EMAC Init */
+
+    // Setup TX CANs
+    setUpCANs();
 
     /* Enable RTI Compare 0 interrupt notification */
     rtiEnableNotification(rtiREG1, rtiNOTIFICATION_COMPARE0);
@@ -223,7 +233,18 @@ int main(void)
             ArpRequestPending = false;
         }
 
-        // 5. Calc PCU Usage
+        // 5. Send CAN Data
+        if( !canIsTxMessagePending(canREG1, canMESSAGE_BOX17) )
+        {
+            uint8_t dataToSend[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
+            uint32_t CanID = 0x300;
+            uint32_t packedID  = (uint32)0x80000000U | (uint32)0x00000000U | (uint32)0x20000000U | (uint32)((uint32)((uint32)CanID & (uint32)0x000007FFU) << (uint32)18U); // 11-bit ID
+            canUpdateID(canREG1, canMESSAGE_BOX17, packedID);
+            canTransmit(canREG1, canMESSAGE_BOX17, dataToSend);
+
+        }
+
+        // 6. Calc PCU Usage
         uint32_t cpuTime_us = GetAndRestartTimer_us();
         g_Stats.CPUUsage = 100 * (cpuTime_us / 1000.0f); // 1000 - cycle time in [us]
 
@@ -580,6 +601,69 @@ pbuf_t CreateARPPacket(uint8_t* frame, uint8_t* dataToSend )
     memset(&frame[42], 0, 18);
 
     return pbuf;
+}
+
+
+void setUpCANs()
+{
+    uint32_t packedID = 0;
+    uint32_t CanID = 0;
+
+    // CH1 (CAN1) - Radars #1, #4
+    CanID = 0x310; // SpeedInformation
+    packedID  = (uint32)0x80000000U | (uint32)0x00000000U | (uint32)0x20000000U | (uint32)((uint32)((uint32)CanID & (uint32)0x000007FFU) << (uint32)18U); // 11-bit ID
+    canUpdateID(canREG1, canMESSAGE_BOX17, packedID);
+
+    CanID = 0x311; // YawRateInformation
+    packedID  = (uint32)0x80000000U | (uint32)0x00000000U | (uint32)0x20000000U | (uint32)((uint32)((uint32)CanID & (uint32)0x000007FFU) << (uint32)18U); // 11-bit ID
+    canUpdateID(canREG1, canMESSAGE_BOX18, packedID);
+
+    CanID = 0x340; // SpeedInformation
+    packedID  = (uint32)0x80000000U | (uint32)0x00000000U | (uint32)0x20000000U | (uint32)((uint32)((uint32)CanID & (uint32)0x000007FFU) << (uint32)18U); // 11-bit ID
+    canUpdateID(canREG1, canMESSAGE_BOX19, packedID);
+
+    CanID = 0x341; // YawRateInformation
+    packedID  = (uint32)0x80000000U | (uint32)0x00000000U | (uint32)0x20000000U | (uint32)((uint32)((uint32)CanID & (uint32)0x000007FFU) << (uint32)18U); // 11-bit ID
+    canUpdateID(canREG1, canMESSAGE_BOX20, packedID);
+
+
+    // CH2 (CAN3) - Radars #0, #2
+    CanID = 0x300; // SpeedInformation
+    packedID  = (uint32)0x80000000U | (uint32)0x00000000U | (uint32)0x20000000U | (uint32)((uint32)((uint32)CanID & (uint32)0x000007FFU) << (uint32)18U); // 11-bit ID
+    canUpdateID(canREG2, canMESSAGE_BOX17, packedID);
+
+    CanID = 0x301; // YawRateInformation
+    packedID  = (uint32)0x80000000U | (uint32)0x00000000U | (uint32)0x20000000U | (uint32)((uint32)((uint32)CanID & (uint32)0x000007FFU) << (uint32)18U); // 11-bit ID
+    canUpdateID(canREG2, canMESSAGE_BOX18, packedID);
+
+    CanID = 0x320; // SpeedInformation
+    packedID  = (uint32)0x80000000U | (uint32)0x00000000U | (uint32)0x20000000U | (uint32)((uint32)((uint32)CanID & (uint32)0x000007FFU) << (uint32)18U); // 11-bit ID
+    canUpdateID(canREG2, canMESSAGE_BOX19, packedID);
+
+    CanID = 0x321; // YawRateInformation
+    packedID  = (uint32)0x80000000U | (uint32)0x00000000U | (uint32)0x20000000U | (uint32)((uint32)((uint32)CanID & (uint32)0x000007FFU) << (uint32)18U); // 11-bit ID
+    canUpdateID(canREG2, canMESSAGE_BOX20, packedID);
+
+
+    // CH3 (CAN4) - Radars #3, #5
+    CanID = 0x330; // SpeedInformation
+    packedID  = (uint32)0x80000000U | (uint32)0x00000000U | (uint32)0x20000000U | (uint32)((uint32)((uint32)CanID & (uint32)0x000007FFU) << (uint32)18U); // 11-bit ID
+    canUpdateID(canREG3, canMESSAGE_BOX17, packedID);
+
+    CanID = 0x331; // YawRateInformation
+    packedID  = (uint32)0x80000000U | (uint32)0x00000000U | (uint32)0x20000000U | (uint32)((uint32)((uint32)CanID & (uint32)0x000007FFU) << (uint32)18U); // 11-bit ID
+    canUpdateID(canREG3, canMESSAGE_BOX18, packedID);
+
+    CanID = 0x350; // SpeedInformation
+    packedID  = (uint32)0x80000000U | (uint32)0x00000000U | (uint32)0x20000000U | (uint32)((uint32)((uint32)CanID & (uint32)0x000007FFU) << (uint32)18U); // 11-bit ID
+    canUpdateID(canREG3, canMESSAGE_BOX19, packedID);
+
+    CanID = 0x351; // YawRateInformation
+    packedID  = (uint32)0x80000000U | (uint32)0x00000000U | (uint32)0x20000000U | (uint32)((uint32)((uint32)CanID & (uint32)0x000007FFU) << (uint32)18U); // 11-bit ID
+    canUpdateID(canREG3, canMESSAGE_BOX20, packedID);
+
+
+    // CH4 (CAN5) - PCAN - N/A
 }
 
 /* USER CODE END */
