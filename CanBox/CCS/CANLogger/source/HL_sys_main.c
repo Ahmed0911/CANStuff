@@ -96,9 +96,10 @@ uint16_t radarRXPort = 17185; // 0x4321
 extern hdkif_t hdkif_data[1];
 
 // Data Transfer Functions
+pbuf_t g_ethPacketHandle[2]; // Ethernet Packet handle for (EMACTransmit)
 uint8_t g_Frame[2000]; // global buffer for UDP Packet Transmit (Should be in un-cached memory!!! It is accessed by EMAC DMA)
-pbuf_t CreateUDPPacket(uint8_t* frame, uint8_t* dataToSend, uint32_t dataLength );
-pbuf_t CreateARPPacket(uint8_t* frame, uint8_t* dataToSend );
+void CreateUDPPacket(uint8_t* frame, uint8_t* dataToSend, uint32_t dataLength );
+void CreateARPPacket(uint8_t* frame, uint8_t* dataToSend );
 bool ArpRequestPending = false;
 
 // counters for bitrateCalc
@@ -146,7 +147,7 @@ struct AurixCanHeader
 #pragma pack(pop)
 
 volatile struct SStats g_Stats; // Header
-uint8_t g_DataToSend[2000]; // Actual data to send (header + messages)
+static uint8_t g_DataToSend[2000]; // Actual data to send (header + messages)
 uint32_t g_SizeToSend = 0; // size t send (also use for filling buffer)
 
 void GetCANAndFillBuffer(canBASE_t* canReg, uint32 canDev);
@@ -166,7 +167,7 @@ struct RadarData
 };
 #pragma pack(pop)
 
-struct RadarData g_radarData;
+struct RadarData g_radarData; // data to be sent to radars
 
 /* USER CODE END */
 
@@ -231,18 +232,18 @@ int main(void)
 
         //len = 50; // DUMMY SEND - REMOVE ME!!!
 
-        if( len > 0 && !ArpRequestPending) // do not send empty UDP packets (no messages)
+        if( len > 0 ) // do not send empty UDP packets (no messages)
         {
-            pbuf_t pbuf = CreateUDPPacket(g_Frame, g_DataToSend, len);
-            EMACTransmit(&hdkif_data[0], &pbuf);
+            CreateUDPPacket(g_Frame, g_DataToSend, len);
+            EMACTransmit(&hdkif_data[0], &g_ethPacketHandle[0]);
             g_Stats.EthFramesSent++;
         }
 
         // 4. Send ARP responses
         if( ArpRequestPending )
         {
-            pbuf_t pbuf = CreateARPPacket(g_Frame, g_DataToSend);
-            EMACTransmit(&hdkif_data[0], &pbuf);
+            CreateARPPacket(g_Frame, g_DataToSend);
+            EMACTransmit(&hdkif_data[0], &g_ethPacketHandle[0]);
             ArpRequestPending = false;
         }
 
@@ -449,13 +450,12 @@ void GetCANAndFillBuffer(canBASE_t* canReg, uint32 canDev)
 // Minimum dataLength = 18 bytes (64 bytes is minimum ethernet frame size: EthernetHeader(14) + IPHeader(20) + UDPHeader(8) + FCS(4) = 46 + 18 = 64 bytes)
 // Maximum dataLength = 1476 bytes (1522 bytes is maximum ethernet frame size: 46 + 1476 = 1522)
 ////////////////////////////
-pbuf_t CreateUDPPacket(uint8_t* frame, uint8_t* dataToSend, uint32_t dataLength )
+void CreateUDPPacket(uint8_t* frame, uint8_t* dataToSend, uint32_t dataLength )
 {
-    pbuf_t pbuf;
-    pbuf.next = NULL;
-    pbuf.payload = frame;
-    pbuf.len = dataLength + 28 + 14;
-    pbuf.tot_len = dataLength + 28 + 14;
+    g_ethPacketHandle[0].next = NULL;
+    g_ethPacketHandle[0].payload = frame;
+    g_ethPacketHandle[0].len = dataLength + 28 + 14;
+    g_ethPacketHandle[0].tot_len = dataLength + 28 + 14;
 
     //////////////////////////////////////
     // ETHERNET/MAC HEADER (14 bytes)
@@ -560,21 +560,17 @@ pbuf_t CreateUDPPacket(uint8_t* frame, uint8_t* dataToSend, uint32_t dataLength 
     // DATA
     //////////////////////////////////////
     memcpy(&frame[42], dataToSend, dataLength);
-
-
-    return pbuf;
 }
 
 ////////////////////////////
 // Minimum dataLength/padding = 18 bytes (64 bytes is minimum ethernet frame size: EthernetHeader(14) + ARP(8+20) + FCS(4) + PADDING = 46(data+FCS) + 18(padding) = 64 bytes)
 ////////////////////////////
-pbuf_t CreateARPPacket(uint8_t* frame, uint8_t* dataToSend )
+void CreateARPPacket(uint8_t* frame, uint8_t* dataToSend )
 {
-    pbuf_t pbuf;
-    pbuf.next = NULL;
-    pbuf.payload = frame;
-    pbuf.len = 18 + 28 + 14; // 42 bytes data + 18 bytes padding = 60 bytes (+4 FSC)
-    pbuf.tot_len = 18 + 28 + 14;
+    g_ethPacketHandle[0].next = NULL;
+    g_ethPacketHandle[0].payload = frame;
+    g_ethPacketHandle[0].len = 18 + 28 + 14; // 42 bytes data + 18 bytes padding = 60 bytes (+4 FSC)
+    g_ethPacketHandle[0].tot_len = 18 + 28 + 14;
 
     //////////////////////////////////////
     // ETHERNET/MAC HEADER (14 bytes)
@@ -626,8 +622,6 @@ pbuf_t CreateARPPacket(uint8_t* frame, uint8_t* dataToSend )
     // PADDING
     //////////////////////////////////////
     memset(&frame[42], 0, 18);
-
-    return pbuf;
 }
 
 
