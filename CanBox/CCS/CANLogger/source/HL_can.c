@@ -591,10 +591,10 @@ void canInit(void)
     *     - Setup baud rate prescaler
     */
     canREG1->BTR = (uint32)((uint32)0U << 16U) |
-                   (uint32)((uint32)(3U - 1U) << 12U) |
-                   (uint32)((uint32)((3U + 3U) - 1U) << 8U) |
-                   (uint32)((uint32)(3U - 1U) << 6U) |
-                   (uint32)14U;
+                   (uint32)((uint32)(4U - 1U) << 12U) |
+                   (uint32)((uint32)((6U + 4U) - 1U) << 8U) |
+                   (uint32)((uint32)(4U - 1U) << 6U) |
+                   (uint32)9U;
 
 
 
@@ -603,7 +603,7 @@ void canInit(void)
                    | (uint32)((uint32)0U  << 17U )
                    | (uint32)((uint32)0U  << 16U )                
                    | (uint32)((uint32)1U  << 3U )  
-                   | (uint32)((uint32)1U  << 2U )    
+                   | (uint32)((uint32)0U  << 2U )    
                    | (uint32)((uint32)0U << 1U );
                    
     canREG1->RIOC =  (uint32)((uint32)1U  << 18U )    
@@ -1125,10 +1125,10 @@ void canInit(void)
     *     - Setup baud rate prescaler
     */
     canREG2->BTR = (uint32)((uint32)0U << 16U) |
-                   (uint32)((uint32)(3U - 1U) << 12U) |
-                   (uint32)((uint32)((3U + 3U) - 1U) << 8U) |
-                   (uint32)((uint32)(3U - 1U) << 6U) |
-                   (uint32)14U;		
+                   (uint32)((uint32)(4U - 1U) << 12U) |
+                   (uint32)((uint32)((6U + 4U) - 1U) << 8U) |
+                   (uint32)((uint32)(4U - 1U) << 6U) |
+                   (uint32)9U;		
 
 
    /** - CAN2 Port output values */
@@ -1136,7 +1136,7 @@ void canInit(void)
                    | (uint32)((uint32)0U  << 17U )
                    | (uint32)((uint32)0U  << 16U )  
                    | (uint32)((uint32)1U  << 3U )  
-                   | (uint32)((uint32)1U  << 2U )    
+                   | (uint32)((uint32)0U  << 2U )    
                    | (uint32)((uint32)0U << 1U );
                    
     canREG2->RIOC =  (uint32)((uint32)1U  << 18U )    
@@ -1654,10 +1654,10 @@ void canInit(void)
     *     - Setup baud rate prescaler
     */
     canREG3->BTR = (uint32)((uint32)0U << 16U) |
-                   (uint32)((uint32)(3U - 1U) << 12U) |
-                   (uint32)((uint32)((3U + 3U) - 1U) << 8U) |
-                   (uint32)((uint32)(3U - 1U) << 6U) |
-                   (uint32)(uint32)14U;
+                   (uint32)((uint32)(4U - 1U) << 12U) |
+                   (uint32)((uint32)((6U + 4U) - 1U) << 8U) |
+                   (uint32)((uint32)(4U - 1U) << 6U) |
+                   (uint32)(uint32)9U;
 
 
     /** - CAN3 Port output values */
@@ -1665,10 +1665,10 @@ void canInit(void)
                    | (uint32)((uint32)0U  << 17U )
                    | (uint32)((uint32)0U  << 16U )  
                    | (uint32)((uint32)1U  << 3U )  
-                   | (uint32)((uint32)1U  << 2U )    
+                   | (uint32)((uint32)0U  << 2U )    
                    | (uint32)((uint32)0U << 1U );
                    
-    canREG3->RIOC =  (uint32)((uint32)1U  << 18U )    
+    canREG3->RIOC =  (uint32)((uint32)0U  << 18U )    
                    | (uint32)((uint32)0U  << 17U )  
                    | (uint32)((uint32)0U  << 16U )   
                    | (uint32)((uint32)1U  << 3U )  
@@ -2108,10 +2108,10 @@ void canInit(void)
     *     - Setup baud rate prescaler
     */
     canREG4->BTR = ((uint32)0U << 16U) |
-                   (((uint32)3U - 1U) << 12U) |
-                   ((((uint32)3U + (uint32)3U) - 1U) << 8U) |
-                   (((uint32)3U - 1U) << 6U) |
-                   (uint32)14U;
+                   (((uint32)4U - 1U) << 12U) |
+                   ((((uint32)6U + (uint32)4U) - 1U) << 8U) |
+                   (((uint32)4U - 1U) << 6U) |
+                   (uint32)9U;
 
 
 
@@ -2121,10 +2121,10 @@ void canInit(void)
                    | (uint32)((uint32)0U  << 17U )
                    | (uint32)((uint32)0U  << 16U )  
                    | (uint32)((uint32)1U  << 3U )  
-                   | (uint32)((uint32)1U  << 2U )    
+                   | (uint32)((uint32)0U  << 2U )    
                    | (uint32)((uint32)0U << 1U );
                    
-    canREG4->RIOC =  (uint32)((uint32)1U  << 18U )    
+    canREG4->RIOC =  (uint32)((uint32)0U  << 18U )    
                    | (uint32)((uint32)0U  << 17U )  
                    | (uint32)((uint32)0U  << 16U )   
                    | (uint32)((uint32)1U  << 3U )  
